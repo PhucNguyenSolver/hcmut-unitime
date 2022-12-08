@@ -1,3 +1,5 @@
+"use strict"
+
 const GWT = {
     showLoading: () => this?.showGwtLoading && showGwtLoading(),
     hideLoading: () => this?.hideGwtLoading && hideGwtLoading(),
@@ -46,22 +48,25 @@ const Query = {
     },
     SubmitScheduleButtons: () => {
         const label = "Submit Schedule"
-        return document.querySelectorAll(`[aria-label="${label}"]`)
+        return document.querySelectorAll(`[aria-label="${label}"]`) ?? []
     },
     CurrentRegistrationButton: () => {
         const label = "Current Registration"
-        return (
-            document.querySelector(
-                "#UniTimeGWT\\:Body > table > tbody > tr:nth-child(1) > td > div > div.left-panel > button:nth-child(5)"
-            ) ?? null
-        )
-        // return document.querySelectorAll(`[aria-label="${label}"]`)
+        return document.querySelectorAll(`[aria-label="${label}"]`) ?? []
     },
     BuildScheduleButtons: () => {
         const label = "Build Schedule"
-        return document.querySelectorAll(`[aria-label="${label}"]`)
+        return document.querySelectorAll(`[aria-label="${label}"]`) ?? []
     },
-    Buttons: () => [...Query.SubmitScheduleButtons(), ...Query.BuildScheduleButtons()],
+    SubmitRequestsButtons: () => {
+        const label = "Submit Requests"
+        return document.querySelectorAll(`[aria-label="${label}"]`) ?? []
+    },
+    Buttons: () => [
+        ...Query.SubmitRequestsButtons(),
+        ...Query.BuildScheduleButtons(),
+        ...Query.SubmitScheduleButtons(),
+    ],
 }
 
 function makeOverlayButton() {
@@ -91,31 +96,60 @@ const mock = () => {
         .catch((err) => notifyFailure(err))
 }
 
-function bindSuccessfully() {
-    const mockBtn = makeOverlayButton()
-    const btn = Query.BuildScheduleButtons()[0]
-    if (!btn) throw "Button to bind not found"
-    btn.hidden = true
-    btn.parentNode.appendChild(mockBtn)
+let btn
 
-    mockBtn.addEventListener("click", function (e) {
-        GWT.showMessage(" validating...")
-        Validation.validateCourseRequest({})
-            .then((result) => {
-                GWT.showMessage(result)
-                btn.click()
-            })
-            .catch((err) => {
-                GWT.showWarning(err)
-            })
-    })
+function bindSuccessfully() {
+    let buttons = Query.Buttons()
+    if (!buttons || buttons.length === 0) throw "Button to bind not found"
+    // for (let btn of buttons) {
+    btn = buttons[0]
+    const mockBtn = makeOverlayButton()
+    btn.parentNode.appendChild(mockBtn)
+    btn.hidden = true
+    // }
+
+    const options = { passive: true }
+    mockBtn.addEventListener("click", Utils.throttle(validateAndSubmit.bind(this), 3000), options)
 }
 
-Utils.sleep(500).then(() => {
+function validateAndSubmit(e) {
+    let request = getRequestedCourses()
+    if (!quickCheckRequest(request)) return
+    console.log({ request })
+    GWT.showMessage(" validating...")
+    Validation.validateCourseRequest({})
+        .then((result) => {
+            GWT.showMessage(result)
+            btn.click()
+        })
+        .catch((err) => {
+            GWT.showWarning(err)
+        })
+}
+
+function quickCheckRequest(request) {
+    if (!request || request?.length === 0) return false
+    return true
+}
+
+Utils.sleep(2000).then(() => {
     try {
         bindSuccessfully()
-        // alert("JS injected hereee")
-    } catch {
+        alert("JS injected")
+    } catch (e) {
         alert("Something went wrong")
+        console.error(e)
     }
 })
+
+function getRequestedCourses() {
+    let courseRequestLines = document.querySelectorAll("[class='unitime-CourseRequestLine']")
+    const raw = Array.from(courseRequestLines).map((rl) => {
+        const course = rl.querySelector(".line")?.querySelector("input[class='filter']")?.value
+        const altCourse = rl.querySelector(".alt-line")?.querySelector("input[class='filter']")?.value
+        return { course, altCourse }
+    })
+    const checkValidLine = (item) => item?.course !== undefined && item?.course !== ""
+    const result = raw.filter(checkValidLine)
+    return result
+}
