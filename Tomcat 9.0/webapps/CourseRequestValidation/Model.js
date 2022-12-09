@@ -91,6 +91,7 @@ const parseValidationResponse = (response) => {
             return {
                 errors: [],
                 success: true,
+                message: "..Hợp lệ..",
             }
         if (status === "Fail") return _parseValidationFailResult(response)
         throw `Invalid status ${response?.data?.status}`
@@ -117,13 +118,13 @@ const sampleSuccessResponse = {
 }
 
 const _parseValidationFailResult = (response = rawFailResponse) => {
+    const errorMessages = ["Fail this", "fail that"]
+
     return {
         success: false,
-        errors: [
-            {
-                message: "Example ...",
-            },
-        ],
+        errors: errorMessages.map((text) => ({
+            message: text,
+        })),
     }
 }
 

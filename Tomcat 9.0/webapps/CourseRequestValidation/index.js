@@ -114,7 +114,7 @@ const Validation = {
     MSG_SUCCESS: "MSG_SUCCESS",
     validateCourseRequest: async (request) => {
         // const { student, requestedCourse } = request
-        // return parseValidationResponse(rawFailResponse)
+        return parseValidationResponse(rawFailResponse)
         return await Validation.randomValidateCourseRequest()
     },
     randomValidateCourseRequest: async () => {
@@ -196,8 +196,10 @@ function testValidate() {
         alert(message)
     }
     const failHandler = (res) => {
-        const message = res.error.message.toString()
-        Ui.showWarning(message)
+        Array.from(res.errors).forEach((error) => {
+            const message = error.message.toString()
+            Ui.showWarning(message)
+        })
     }
     validate(successHandler, failHandler, onError, (debug = true))
 }
