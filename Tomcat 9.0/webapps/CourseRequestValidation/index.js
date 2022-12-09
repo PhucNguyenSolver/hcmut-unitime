@@ -86,7 +86,23 @@ const Ui = {
         return result
     },
     getStudentInfo: () => {
-        return null // TODO
+        try {
+            const studentIdDisplayed = document
+                .querySelector("#UniTimeGWT\\:Header > div > div.cell.middle > div.text.clickable")
+                .innerText.replace("User: ", "")
+            const semesterDisplayed = document
+                .querySelector("#UniTimeGWT\\:Header > div > div.cell.right > div.text.clickable")
+                .innerText.replace("Session: ", "")
+            const academicProgramDisplayed = "DT"
+
+            return {
+                studentId: valueWrapper(studentIdDisplayed),
+                academicProgram: valueWrapper(academicProgramDisplayed),
+                semester: valueWrapper(semesterDisplayed),
+            }
+        } catch {
+            return null
+        }
     },
     showMessage: GWT.showMessage,
     showWarning: GWT.showWarning,
