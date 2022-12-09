@@ -1,5 +1,7 @@
 "use strict"
 
+const THROTTLE_INTERVAL = 1000
+
 const Utils = {
     getRandomInt: (min, max) => {
         min = Math.ceil(min)
@@ -83,24 +85,29 @@ const Ui = {
         const result = raw.filter(checkValidLine)
         return result
     },
+    getStudentInfo: () => {
+        return null // TODO
+    },
     showMessage: GWT.showMessage,
     showWarning: GWT.showWarning,
-    checkInitialButtonActiveOnPage: (btn) => !(btn.style.display === "none"),
+    btnEnabled: (btn) => (btn.style.display === "none" ? false : true),
     hideInitialButton: (btn) => (btn.hidden = true),
 }
 
 const Validation = {
     MSG_SUCCESS: "MSG_SUCCESS",
     validateCourseRequest: async (request) => {
-        const { student, requestedCourse } = request
-        return await Validation.randomValidateCourseRequest(request)
+        // const { student, requestedCourse } = request
+        return await Validation.randomValidateCourseRequest()
     },
     randomValidateCourseRequest: async () => {
+        const failing = (reason) => ({ success: false, error: { message: reason } })
+        const passing = (message) => ({ success: true, message: message })
         await Utils.sleep(1000)
         const choice = Utils.getRandomInt(0, 10)
-        if (choice < 6) throw "Thiếu môn tiên quyết"
-        if (choice < 8) throw "Chưa đóng học phí"
-        return MSG_SUCCESS
+        if (choice < 6) return failing("Thiếu môn tiên quyết")
+        if (choice < 8) return failing("Chưa đóng học phí")
+        return passing("Hợp lệ")
     },
 }
 
@@ -113,34 +120,67 @@ function bind() {
 
 function _bindValidatorButton(btn, title) {
     const mockBtn = Ui.makeOverlayButton(title)
-    const onClick = Utils.throttle(() => validateAndSubmit(btn), 3000)
+    const onClick = Utils.throttle(() => validateAndSubmit(btn), THROTTLE_INTERVAL)
     mockBtn.addEventListener("click", onClick, { passive: true })
     btn.parentNode.appendChild(mockBtn)
     Ui.hideInitialButton(btn)
 }
 
 function validateAndSubmit(initialButton) {
-    if (!Ui.checkInitialButtonActiveOnPage(initialButton)) return alert("Button disabled")
-    let request = {
-        requestedCourse: Ui.getRequestedCourses(),
-        student: null,
+    const onError = (reason) => alert(reason)
+    const successHandler = (res) => {
+        const message = res.message.toString()
+        Ui.showMessage(message)
+        initialButton.click()
     }
-    if (!quickCheckRequest(request)) return alert("Quick check failed")
-    console.log({ request })
-    Ui.showMessage(" validating...")
+    const failHandler = (res) => {
+        const message = res.error.message.toString()
+        Ui.showWarning(message)
+    }
+    if (!Ui.btnEnabled(initialButton)) return onError("Button disabled")
+    validate(successHandler, failHandler, onError)
+}
+
+async function validate(onSuccess, onFail, onError = () => {}, debug = false) {
+    if (!onSuccess || !onFail) throw "callback functions are required"
+    const request = {
+        requestedCourse: Ui.getRequestedCourses(),
+        student: Ui.getStudentInfo(),
+    }
+    debug && console.log(request)
+    if (!quickCheckRequest(request)) throw "Error: please try again"
+    Ui.showMessage("Validating..")
     Validation.validateCourseRequest(request)
-        .then((result) => {
-            Ui.showMessage(result)
-            initialButton.click()
+        .then((resultObj) => {
+            const success = resultObj.success // expect bool
+            if (success === true) onSuccess(resultObj)
+            else if (success === false) onFail(resultObj)
+            else onError(`Invalid result object ${JSON.stringify(resultObj)}`)
         })
         .catch((err) => {
-            Ui.showWarning(err)
+            onError(err || "Validate Error")
         })
 }
 
-function quickCheckRequest({ requestedCourse: courses }) {
-    if (!courses || courses?.length === 0) return false
-    return true
+function quickCheckRequest(request) {
+    const quickCheckCourseList = (courses) => (!courses || courses?.length === 0 ? false : true)
+    const quickCheckStudentInfo = (studentInfo) => true
+    const { requestedCourse, student } = request
+    return quickCheckStudentInfo(student) && quickCheckCourseList(requestedCourse)
+}
+
+function testValidate() {
+    const onError = (reason) => alert(reason)
+    const successHandler = (res) => {
+        const message = res.message.toString()
+        Ui.showMessage(message)
+        alert(message)
+    }
+    const failHandler = (res) => {
+        const message = res.error.message.toString()
+        Ui.showWarning(message)
+    }
+    validate(successHandler, failHandler, onError, (debug = true))
 }
 
 Utils.sleep(1500).then(bind).catch(alert)
