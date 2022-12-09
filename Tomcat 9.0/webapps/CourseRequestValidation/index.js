@@ -114,10 +114,11 @@ const Validation = {
     MSG_SUCCESS: "MSG_SUCCESS",
     validateCourseRequest: async (request) => {
         // const { student, requestedCourse } = request
+        // return parseValidationResponse(rawFailResponse)
         return await Validation.randomValidateCourseRequest()
     },
     randomValidateCourseRequest: async () => {
-        const failing = (reason) => ({ success: false, error: { message: reason } })
+        const failing = (reason) => ({ success: false, errors: [{ message: reason }] })
         const passing = (message) => ({ success: true, message: message })
         await Utils.sleep(1000)
         const choice = Utils.getRandomInt(0, 10)
@@ -150,8 +151,10 @@ function validateAndSubmit(initialButton) {
         initialButton.click()
     }
     const failHandler = (res) => {
-        const message = res.error.message.toString()
-        Ui.showWarning(message)
+        Array.from(res.errors).forEach((error) => {
+            const message = error.message.toString()
+            Ui.showWarning(message)
+        })
     }
     if (!Ui.btnEnabled(initialButton)) return onError("Button disabled")
     validate(successHandler, failHandler, onError)

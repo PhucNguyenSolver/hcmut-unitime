@@ -1,11 +1,5 @@
-// rawRequest -> sampleRequest -> BE -> rawSuccessResponse/rawFailResponse -> sampleFailResponse
-// (makeRequestBody) | (parseValidationResult)
-
-const mockStudent = {
-    studentId: 1915982,
-    academicProgram: "DT",
-    semester: 191,
-}
+// rawRequest -> parsedRequest -> BE -> rawSuccessResponse/rawFailResponse -> sampleFailResponse
+// (makeRequestBody) | (parseValidationResponse)
 
 const rawRequest = {
     requestedCourse: [
@@ -16,20 +10,27 @@ const rawRequest = {
         { course: "GER 101" },
         { course: "ENGL 101", altCourse: "SPAN 101" },
     ],
-    student: mockStudent,
+    student: {
+        studentId: 1915982,
+        academicProgram: "DT",
+        semester: 191,
+    },
 }
 
-function makeRequestBody({ requestedCourse, student = mockStudent }) {
-    if (!requestedCourse) return null
-    return {
-        studentId: mockStudent.studentId,
-        academicProgram: mockStudent.academicProgram,
-        semester: mockStudent.semester,
-        registerSubjects: requestedCourse.map((i) => ({ subjectId: i.course })),
+function makeRequestBody({ requestedCourse, student }) {
+    try {
+        return {
+            studentId: student.studentId,
+            academicProgram: student.academicProgram,
+            semester: student.semester,
+            registerSubjects: requestedCourse.map((i) => ({ subjectId: i.course })),
+        }
+    } catch {
+        return null
     }
 }
 
-const sampleRequest = {
+const parsedRequest = {
     studentId: 1915982,
     academicProgram: "DT",
     semester: 191,
@@ -69,19 +70,34 @@ const rawSuccessResponse = {
     data: {
         status: "Pass", // !?
         studentStatus: "NORMAL",
+        subjectChecks: [
+            {
+                subjectId: "CO2",
+                subjectName: "BBB",
+                checkResult: "Pass",
+            },
+        ],
         checkMinCreditResult: "Pass",
     },
 }
 
-const parseValidationResult = (response) => {
-    const status = response?.data?.status
-    if (status === "Fail") return _parseValidationFailResult(response)
-    else if (status === "Pass")
-        return {
-            error: null,
-            success: true,
-        }
-    throw `Invalid status ${response?.data?.status}`
+const failing = (reason) => ({ success: false, error: { message: reason } })
+const passing = (message) => ({ success: true, message: message })
+
+const parseValidationResponse = (response) => {
+    try {
+        const status = response?.data?.status
+        if (status === "Pass")
+            return {
+                errors: [],
+                success: true,
+            }
+        if (status === "Fail") return _parseValidationFailResult(response)
+        throw `Invalid status ${response?.data?.status}`
+    } catch (e) {
+        console.warn(e)
+        return null
+    }
 }
 
 const sampleFailResponse = {
@@ -100,22 +116,20 @@ const sampleSuccessResponse = {
     success: true,
 }
 
-const _parseValidationFailResult = (response) => {
+const _parseValidationFailResult = (response = rawFailResponse) => {
     return {
-        error: {
-            detail: {
-                title: "Lỗi",
-                message: "VD: Thiếu môn tiên quyết",
-            },
-            code: 999,
-        },
         success: false,
+        errors: [
+            {
+                message: "Example ...",
+            },
+        ],
     }
 }
 
 const Model = {
     makeRequestBody,
-    parseValidationResult,
+    parseValidationResponse,
     rawRequest,
     sampleFailResponse,
 }
