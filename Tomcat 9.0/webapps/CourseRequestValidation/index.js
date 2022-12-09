@@ -1,14 +1,3 @@
-"use strict"
-
-const GWT = {
-    showLoading: () => this?.showGwtLoading && showGwtLoading(),
-    hideLoading: () => this?.hideGwtLoading && hideGwtLoading(),
-    showMessage: (message) => this?.gwtShowMessage && gwtShowMessage(message?.toString() ?? ""),
-    showWarning: (message) => this?.gwtShowWarning && gwtShowWarning(message?.toString() ?? ""),
-    showDialog: (message, path = "gwt.jsp?page=sectioning") =>
-        this?.showGwtDialog && showGwtDialog(message, path, "40%", "40%"),
-}
-
 const Utils = {
     getRandomInt: (min, max) => {
         min = Math.ceil(min)
@@ -39,45 +28,68 @@ const Utils = {
     sleep: (ms) => new Promise((r) => setTimeout(r, ms)),
 }
 
-const Query = {
-    SchedulingAssistant: () => {
+const GWT = {
+    showLoading: () => this?.showGwtLoading && showGwtLoading(),
+    hideLoading: () => this?.hideGwtLoading && hideGwtLoading(),
+    showMessage: (message) => this?.gwtShowMessage && gwtShowMessage(message?.toString() ?? ""),
+    showWarning: (message) => this?.gwtShowWarning && gwtShowWarning(message?.toString() ?? ""),
+    showDialog: (message, path = "gwt.jsp?page=sectioning") =>
+        this?.showGwtDialog && showGwtDialog(message, path, "40%", "40%"),
+}
+
+const Ui = {
+    getSchedulingAssistantTable: () => {
         return document.querySelector("#UniTimeGWT\\:Body > table") ?? null
     },
-    CourseRequestTab: () => {
+    getCourseRequestTab: () => {
         return document.querySelector("#UniTimeGWT\\:Body > table > tbody > tr:nth-child(2) > td > div") ?? null
     },
-    SubmitScheduleButtons: () => {
-        const label = "Submit Schedule"
-        return document.querySelectorAll(`[aria-label="${label}"]`) ?? []
-    },
-    CurrentRegistrationButton: () => {
+    getCurrentRegistrationButtons: () => {
         const label = "Current Registration"
         return document.querySelectorAll(`[aria-label="${label}"]`) ?? []
     },
-    BuildScheduleButtons: () => {
+    getSubmitScheduleButtons: () => {
+        const label = "Submit Schedule"
+        return document.querySelectorAll(`[aria-label="${label}"]`) ?? []
+    },
+    getBuildScheduleButtons: () => {
         const label = "Build Schedule"
         return document.querySelectorAll(`[aria-label="${label}"]`) ?? []
     },
-    SubmitRequestsButtons: () => {
+    getSubmitRequestsButtons: () => {
         const label = "Submit Requests"
         return document.querySelectorAll(`[aria-label="${label}"]`) ?? []
     },
-    Buttons: () => [
-        ...Query.SubmitRequestsButtons(),
-        ...Query.BuildScheduleButtons(),
-        ...Query.SubmitScheduleButtons(),
+    _getButtons: () => [
+        ...Ui.getSubmitRequestsButtons(),
+        ...Ui.getBuildScheduleButtons(),
+        ...Ui.getSubmitScheduleButtons(),
     ],
-}
-
-function makeOverlayButton() {
-    let ele = document.createElement("div")
-    ele.innerHTML = `<button type="button" style="min-width: 75px;">Mock Submit</button>`
-    return ele
+    makeOverlayButton: (title) => {
+        let ele = document.createElement("div")
+        ele.innerHTML = `<button type="button" style="min-width: 75px;">${title}</button>`
+        return ele
+    },
+    getRequestedCourses: () => {
+        let courseRequestLines = document.querySelectorAll("[class='unitime-CourseRequestLine']")
+        const raw = Array.from(courseRequestLines).map((rl) => {
+            const course = rl.querySelector(".line")?.querySelector("input[class='filter']")?.value
+            const altCourse = rl.querySelector(".alt-line")?.querySelector("input[class='filter']")?.value
+            return { course, altCourse }
+        })
+        const checkValidLine = (item) => item?.course !== undefined && item?.course !== ""
+        const result = raw.filter(checkValidLine)
+        return result
+    },
+    showMessage: GWT.showMessage,
+    showWarning: GWT.showWarning,
+    checkInitialButtonActiveOnPage: (btn) => !(btn.style.display === "none"),
+    hideInitialButton: (btn) => (btn.hidden = true),
 }
 
 const Validation = {
     validateCourseRequest: async ({ student, requestedCourse }) => {
-        await Utils.sleep(3000)
+        await Utils.sleep(1000)
         const choice = Utils.getRandomInt(0, 10)
         if (choice < 6) throw "Thiếu môn tiên quyết"
         if (choice < 8) throw "Chưa đóng học phí"
@@ -85,45 +97,34 @@ const Validation = {
     },
 }
 
-const notifySuccess = console.info
-const notifyFailure = console.warn
-
-const mock = () => {
-    Validation.validateCourseRequest({})
-        .then((result) => {
-            notifySuccess(result)
-        })
-        .catch((err) => notifyFailure(err))
+function bind() {
+    if (Ui._getButtons().length === 0) throw "No buttons found"
+    Array.from(Ui.getSubmitRequestsButtons()).forEach((b) => _bindValidatorButton(b, ".Submit Request"))
+    Array.from(Ui.getBuildScheduleButtons()).forEach((b) => _bindValidatorButton(b, ".Build Schedule"))
+    Array.from(Ui.getSubmitScheduleButtons()).forEach((b) => _bindValidatorButton(b, ".Submit Schedule"))
 }
 
-let btn
-
-function bindSuccessfully() {
-    let buttons = Query.Buttons()
-    if (!buttons || buttons.length === 0) throw "Button to bind not found"
-    // for (let btn of buttons) {
-    btn = buttons[0]
-    const mockBtn = makeOverlayButton()
+function _bindValidatorButton(btn, title) {
+    const mockBtn = Ui.makeOverlayButton(title)
+    const onClick = Utils.throttle(() => validateAndSubmit(btn), 3000)
+    mockBtn.addEventListener("click", onClick, { passive: true })
     btn.parentNode.appendChild(mockBtn)
-    btn.hidden = true
-    // }
-
-    const options = { passive: true }
-    mockBtn.addEventListener("click", Utils.throttle(validateAndSubmit.bind(this), 3000), options)
+    Ui.hideInitialButton(btn)
 }
 
-function validateAndSubmit(e) {
-    let request = getRequestedCourses()
+function validateAndSubmit(initialButton) {
+    if (!Ui.checkInitialButtonActiveOnPage(initialButton)) return alert("Button disabled")
+    let request = Ui.getRequestedCourses()
     if (!quickCheckRequest(request)) return
     console.log({ request })
-    GWT.showMessage(" validating...")
+    Ui.showMessage(" validating...")
     Validation.validateCourseRequest({})
         .then((result) => {
-            GWT.showMessage(result)
-            btn.click()
+            Ui.showMessage(result)
+            initialButton.click()
         })
         .catch((err) => {
-            GWT.showWarning(err)
+            Ui.showWarning(err)
         })
 }
 
@@ -132,24 +133,4 @@ function quickCheckRequest(request) {
     return true
 }
 
-Utils.sleep(2000).then(() => {
-    try {
-        bindSuccessfully()
-        alert("JS injected")
-    } catch (e) {
-        alert("Something went wrong")
-        console.error(e)
-    }
-})
-
-function getRequestedCourses() {
-    let courseRequestLines = document.querySelectorAll("[class='unitime-CourseRequestLine']")
-    const raw = Array.from(courseRequestLines).map((rl) => {
-        const course = rl.querySelector(".line")?.querySelector("input[class='filter']")?.value
-        const altCourse = rl.querySelector(".alt-line")?.querySelector("input[class='filter']")?.value
-        return { course, altCourse }
-    })
-    const checkValidLine = (item) => item?.course !== undefined && item?.course !== ""
-    const result = raw.filter(checkValidLine)
-    return result
-}
+Utils.sleep(1500).then(bind).catch(alert)
