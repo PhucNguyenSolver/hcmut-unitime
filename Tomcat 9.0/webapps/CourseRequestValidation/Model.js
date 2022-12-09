@@ -47,13 +47,13 @@ const parsedRequest = {
 
 const rawFailResponse = {
     data: {
-        status: "Fail",
+        status: "FAIL",
         studentStatus: "NORMAL",
         subjectChecks: [
             {
                 subjectId: "CO2",
                 subjectName: "BBB",
-                checkResult: "Fail",
+                checkResult: "FAIL",
                 failReasons: [
                     {
                         subjectDesId: "CO1",
@@ -62,22 +62,22 @@ const rawFailResponse = {
                 ],
             },
         ],
-        checkMinCreditResult: "Pass",
+        checkMinCreditResult: "PASS",
     },
 }
 
 const rawSuccessResponse = {
     data: {
-        status: "Pass", // !?
+        status: "PASS", // !?
         studentStatus: "NORMAL",
         subjectChecks: [
             {
                 subjectId: "CO2",
                 subjectName: "BBB",
-                checkResult: "Pass",
+                checkResult: "PASS",
             },
         ],
-        checkMinCreditResult: "Pass",
+        checkMinCreditResult: "PASS",
     },
 }
 
@@ -87,13 +87,13 @@ const passing = (message) => ({ success: true, message: message })
 const parseValidationResponse = (response) => {
     try {
         const status = response?.data?.status
-        if (status === "Pass")
+        if (status === "PASS")
             return {
                 errors: [],
                 success: true,
                 message: "..Hợp lệ..",
             }
-        if (status === "Fail") return _parseValidationFailResult(response)
+        if (status === "FAIL") return _parseValidationFailResult(response)
         throw `Invalid status ${response?.data?.status}`
     } catch (e) {
         console.warn(e)
@@ -117,8 +117,39 @@ const sampleSuccessResponse = {
     success: true,
 }
 
+const _parseConditionType = (type) => {
+    const dict = {}
+    dict[1] = "tiên quyết" // ?!
+    dict[2] = "học trước" // ?!
+    dict[3] = "song hành" // ?!
+    if (dict[type] === undefined) throw `Unknow condition type ${type}`
+    return dict[type]
+}
+const _parseFailReasonsAsLines = (failReasons) => {
+    let lines = ""
+    Array.from(failReasons).forEach((aReason) => {
+        const { subjectDesId, conditionType } = aReason
+        lines += `- thiếu môn ${_parseConditionType(conditionType)}: ${subjectDesId} \n`
+    })
+    console.log("fail reasons", lines)
+    return lines
+}
+
 const _parseValidationFailResult = (response = rawFailResponse) => {
     const errorMessages = ["Fail this", "fail that"]
+
+    const { studentStatus, checkMinCreditResult: minCreditStatus, subjectChecks = [] } = response?.data || {}
+
+    if (studentStatus !== "NORMAL") errorMessages.push(`Thông tin sinh viên không hợp lệ: ${studentStatus}`)
+    if (minCreditStatus !== "PASS") errorMessages.push(`Không đạt số tín chỉ tối thiểu`)
+
+    const failedCourses = subjectChecks.filter((item) => item.checkResult === "FAIL")
+    Array.from(failedCourses).forEach((course) => {
+        const { subjectId, subjectName, failReasons } = course
+        const reason = `Không hợp lệ: ${subjectName}\n` + _parseFailReasonsAsLines(failReasons)
+        console.log(reason)
+        errorMessages.push(reason)
+    })
 
     return {
         success: false,
