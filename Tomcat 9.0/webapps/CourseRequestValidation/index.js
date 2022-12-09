@@ -1,3 +1,5 @@
+"use strict"
+
 const Utils = {
     getRandomInt: (min, max) => {
         min = Math.ceil(min)
@@ -88,12 +90,17 @@ const Ui = {
 }
 
 const Validation = {
-    validateCourseRequest: async ({ student, requestedCourse }) => {
+    MSG_SUCCESS: "MSG_SUCCESS",
+    validateCourseRequest: async (request) => {
+        const { student, requestedCourse } = request
+        return await Validation.randomValidateCourseRequest(request)
+    },
+    randomValidateCourseRequest: async () => {
         await Utils.sleep(1000)
         const choice = Utils.getRandomInt(0, 10)
         if (choice < 6) throw "Thiếu môn tiên quyết"
         if (choice < 8) throw "Chưa đóng học phí"
-        return "OK"
+        return MSG_SUCCESS
     },
 }
 
@@ -114,11 +121,14 @@ function _bindValidatorButton(btn, title) {
 
 function validateAndSubmit(initialButton) {
     if (!Ui.checkInitialButtonActiveOnPage(initialButton)) return alert("Button disabled")
-    let request = Ui.getRequestedCourses()
-    if (!quickCheckRequest(request)) return
+    let request = {
+        requestedCourse: Ui.getRequestedCourses(),
+        student: null,
+    }
+    if (!quickCheckRequest(request)) return alert("Quick check failed")
     console.log({ request })
     Ui.showMessage(" validating...")
-    Validation.validateCourseRequest({})
+    Validation.validateCourseRequest(request)
         .then((result) => {
             Ui.showMessage(result)
             initialButton.click()
@@ -128,8 +138,8 @@ function validateAndSubmit(initialButton) {
         })
 }
 
-function quickCheckRequest(request) {
-    if (!request || request?.length === 0) return false
+function quickCheckRequest({ requestedCourse: courses }) {
+    if (!courses || courses?.length === 0) return false
     return true
 }
 
