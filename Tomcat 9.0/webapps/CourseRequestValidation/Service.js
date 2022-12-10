@@ -90,4 +90,5 @@ const Api = {
 function callCourseCheck(payload) {
     console.log("here you are", payload)
     return Api.postJSON(courseCheckUrl, payload)
+    // return Api.postJSON(courseCheckUrl, input) // fake payload
 }

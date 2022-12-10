@@ -77,7 +77,10 @@ const Ui = {
     getRequestedCourses: () => {
         let courseRequestLines = document.querySelectorAll("[class='unitime-CourseRequestLine']")
         const raw = Array.from(courseRequestLines).map((rl) => {
-            const course = rl.querySelector(".line")?.querySelector("input[class='filter']")?.value
+            let course = rl.querySelector(".line")?.querySelector("input[class='filter']")?.value
+            if (course === "ALG 101") course = "CO1"
+            if (course === "CALC 101") course = "CO2"
+            if (course === "BIOL 101") course = "CO3"
             const altCourse = rl.querySelector(".alt-line")?.querySelector("input[class='filter']")?.value
             return { course, altCourse }
         })
@@ -100,7 +103,8 @@ const Ui = {
                 academicProgram: valueWrapper(academicProgramDisplayed),
                 semester: valueWrapper(semesterDisplayed),
             }
-        } catch {
+        } catch (e) {
+            console.error(e)
             return null
         }
     },
@@ -166,7 +170,7 @@ async function validate(onSuccess, onFail, onError = () => {}, debug = false) {
         student: Ui.getStudentInfo(),
     }
     debug && console.log(request)
-    if (!quickCheckRequest(request)) throw "Error: please try again"
+    // if (!quickCheckRequest(request)) throw `Quick check failed: ${request}`
     Ui.showMessage("Validating..")
     Validation.validateCourseRequest(request)
         .then((resultObj) => {
@@ -181,8 +185,8 @@ async function validate(onSuccess, onFail, onError = () => {}, debug = false) {
 }
 
 function quickCheckRequest(request) {
-    const quickCheckCourseList = (courses) => (!courses || courses?.length === 0 ? false : true)
-    const quickCheckStudentInfo = (studentInfo) => true
+    const quickCheckCourseList = (courses) => (!courses ? false : true)
+    const quickCheckStudentInfo = (studentInfo) => (studentInfo ? true : false)
     const { requestedCourse, student } = request
     return quickCheckStudentInfo(student) && quickCheckCourseList(requestedCourse)
 }

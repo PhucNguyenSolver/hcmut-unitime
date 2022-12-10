@@ -86,6 +86,9 @@ const failing = (reason) => ({ success: false, error: { message: reason } })
 const passing = (message) => ({ success: true, message: message })
 
 const parseValidationResponse = (response) => {
+    const apiError = response?.error
+    if (apiError) return _parseApiError(apiError)
+
     try {
         const status = response?.data?.status
         if (status === "PASS")
@@ -99,6 +102,23 @@ const parseValidationResponse = (response) => {
     } catch (e) {
         console.error(e)
         return null
+    }
+}
+
+function _parseApiError(error) {
+    let msg = `Đã có lỗi xảy ra. Vui lòng kiểm tra lại.` // fallback error
+    const { code, reason, domain } = error
+    if (reason === "NOT_FOUND_SUBJECT_ID") msg = `Không tìm thấy thông tin môn học. Vui lòng kiểm tra lại.`
+    if (reason === "NOT_FOUND_STUDENT_STATUS") msg = `Không tìm thấy thông tin sinh viên. Vui lòng kiểm tra lại.`
+    if (reason === "NOT_FOUND_MIN_CREDIT_CONFIG") msg = `Không tìm thấy thông tin học kì. Vui lòng kiểm tra lại.`
+
+    return {
+        success: false,
+        errors: [
+            {
+                message: msg,
+            },
+        ],
     }
 }
 
@@ -139,12 +159,13 @@ const _parseFailReasonsAsLines = (failReasons) => {
 const _parseValidationFailResult = (response) => {
     const errorMessages = []
 
+    console.log(response)
     const { studentStatus, checkMinCreditResult: minCreditStatus, subjectChecks = [] } = response?.data || {}
 
     if (studentStatus !== "NORMAL") errorMessages.push(`Thông tin sinh viên không hợp lệ: ${studentStatus}`)
     if (minCreditStatus !== "PASS") errorMessages.push(`Không đạt số tín chỉ tối thiểu`)
 
-    const failedCourses = subjectChecks.filter((item) => item.checkResult === "FAIL")
+    const failedCourses = (subjectChecks || []).filter((item) => item.checkResult === "FAIL")
     Array.from(failedCourses).forEach((course) => {
         const { subjectId, subjectName, failReasons } = course
         const reason = `Không hợp lệ: ${subjectName}\n` + _parseFailReasonsAsLines(failReasons)
