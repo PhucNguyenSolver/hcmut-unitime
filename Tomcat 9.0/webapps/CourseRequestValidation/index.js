@@ -111,11 +111,10 @@ const Ui = {
 }
 
 const Validation = {
-    MSG_SUCCESS: "MSG_SUCCESS",
     validateCourseRequest: async (request) => {
-        // const { student, requestedCourse } = request
-        return parseValidationResponse(rawFailResponse)
-        return await Validation.randomValidateCourseRequest()
+        // return await Validation.randomValidateCourseRequest()
+        let response = await callCourseCheck(makeRequestBody(request))
+        return parseValidationResponse(response)
     },
     randomValidateCourseRequest: async () => {
         const failing = (reason) => ({ success: false, errors: [{ message: reason }] })

@@ -25,7 +25,8 @@ function makeRequestBody({ requestedCourse, student }) {
             semester: student.semester,
             registerSubjects: requestedCourse.map((i) => ({ subjectId: i.course })),
         }
-    } catch {
+    } catch(e) {
+        console.error(e)
         return null
     }
 }
@@ -96,7 +97,7 @@ const parseValidationResponse = (response) => {
         if (status === "FAIL") return _parseValidationFailResult(response)
         throw `Invalid status ${response?.data?.status}`
     } catch (e) {
-        console.warn(e)
+        console.error(e)
         return null
     }
 }
@@ -135,8 +136,8 @@ const _parseFailReasonsAsLines = (failReasons) => {
     return lines
 }
 
-const _parseValidationFailResult = (response = rawFailResponse) => {
-    const errorMessages = ["Fail this", "fail that"]
+const _parseValidationFailResult = (response) => {
+    const errorMessages = []
 
     const { studentStatus, checkMinCreditResult: minCreditStatus, subjectChecks = [] } = response?.data || {}
 
