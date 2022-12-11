@@ -110,7 +110,7 @@ function _parseApiError(error) {
     const { code, reason, domain } = error
     if (reason === "NOT_FOUND_SUBJECT_ID") msg = `Không tìm thấy thông tin môn học. Vui lòng kiểm tra lại.`
     if (reason === "NOT_FOUND_STUDENT_STATUS") msg = `Không tìm thấy thông tin sinh viên. Vui lòng kiểm tra lại.`
-    if (reason === "NOT_FOUND_MIN_CREDIT_CONFIG") msg = `Không tìm thấy thông tin học kì. Vui lòng kiểm tra lại.`
+    if (reason === "NOT_FOUND_MIN_CREDIT_CONFIG") msg = `Không tìm thấy số tín chỉ tối thiểu. Vui lòng kiểm tra lại.`
 
     return {
         success: false,
@@ -150,7 +150,9 @@ const _parseFailReasonsAsLines = (failReasons) => {
     let lines = ""
     Array.from(failReasons).forEach((aReason) => {
         const { subjectDesId, conditionType } = aReason
-        lines += `- thiếu môn ${_parseConditionType(conditionType)}: ${subjectDesId} \n`
+        const subjectName = valueWrapper(`name_of_${subjectDesId}`)
+        // lines += `- thiếu môn ${_parseConditionType(conditionType)}: ${subjectDesId} \n`
+        lines += `- thiếu môn ${_parseConditionType(conditionType)}: ${subjectName} \n`
     })
     console.log("fail reasons", lines)
     return lines

@@ -78,14 +78,12 @@ const Ui = {
         let courseRequestLines = document.querySelectorAll("[class='unitime-CourseRequestLine']")
         const raw = Array.from(courseRequestLines).map((rl) => {
             let course = rl.querySelector(".line")?.querySelector("input[class='filter']")?.value
-            if (course === "ALG 101") course = "CO1"
-            if (course === "CALC 101") course = "CO2"
-            if (course === "BIOL 101") course = "CO3"
             const altCourse = rl.querySelector(".alt-line")?.querySelector("input[class='filter']")?.value
             return { course, altCourse }
         })
         const checkValidLine = (item) => item?.course !== undefined && item?.course !== ""
         const result = raw.filter(checkValidLine)
+        result.forEach((line) => (line.course = valueWrapper(line.course)))
         return result
     },
     getStudentInfo: () => {
